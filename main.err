@@ -1,7 +1,9 @@
-Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 111 : Register in operand not in bank 0.  Ensure that bank bits are correct.
-Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 113 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 112 : Register in operand not in bank 0.  Ensure that bank bits are correct.
 Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 114 : Register in operand not in bank 0.  Ensure that bank bits are correct.
 Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 115 : Register in operand not in bank 0.  Ensure that bank bits are correct.
 Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 116 : Register in operand not in bank 0.  Ensure that bank bits are correct.
 Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 117 : Register in operand not in bank 0.  Ensure that bank bits are correct.
 Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 118 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 119 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[305] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 168 : Using default destination of 1 (file).
+Message[305] C:\USERS\FEDDY\DESKTOP\TPARQ\MAIN.ASM 178 : Using default destination of 1 (file).
