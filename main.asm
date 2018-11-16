@@ -1,5 +1,16 @@
 		#INCLUDE<P16F628.INC>
-		__CONFIG 3F10
+											;__CONFIG 3F10
+_INCRC_OSC_NOCLKOUT   equ  0x3FFC
+_WDT_OFF              equ  0x3FFB
+_PWRTE_ON             equ  0x3FF7
+_MCLRE_OFF            equ  0x3FDF
+_BODEN_OFF            equ  0x3FBF
+_LVP_OFF              equ  0x3F7F
+_CPD_OFF              equ  0x3F7F
+_CP_OFF               equ  0x3FFF
+
+		__config _INCRC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_ON & _MCLRE_OFF & _BODEN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF
+
 		
 ;DECLARACION DE ESPACIOS DE MEMORIA A USAR		
 		CBLOCK	0X20
@@ -7,33 +18,38 @@
 		D2									;VARIABLE CON EL VALOR DEL DISPLAY 2
 		D3									;VARIABLE CON EL VALOR DEL DISPLAY 3
 		D4									;VARIABLE CON EL VALOR DEL DISPLAY 4
-		
-		N1_LOADED
-		N1_D1
+		N1_LOADED							; FLAG DE N1 CARGADO
+		N1_D1								; DIGITOS DE N1
 		N1_D2
 		N1_D3
 		N1_D4
-		N2_LOADED
-		N2_D1
+		N2_LOADED							; FLAG DE N2 CARGADO
+		N2_D1								; DIGITOS DE N2
 		N2_D2
 		N2_D3
 		N2_D4
-		
-		RES_D1
-		RES_D2
-		RES_D3
-		RES_D4
+		RES_NEG								;FLAG DE RESULTADO NEGATIVO
+		CONT_RES							; CONTADORES DE LOOPS DE RESTA
+		CONT_RES2
+		CONT_RES3
 
-		INPUT_1								;PRIMER INPUT (0x0000 A 0x0FFF)
-		INPUT_2								;SEGUNDO INPUT (0x0000 A 0x0FFF)
-		
-		RESULTADO							;RESULTADO (0x0000 A 0x0FFF)
-		AUX_RES
+		AUX_D1								; AUXILIAR 1 PARA LA RESTA
+		AUX_D2
+		AUX_D3
+		AUX_D4
+		AUX2_D1								; AUXILIAR 2 PARA LA RESTA
+		AUX2_D2
+		AUX2_D3
+		AUX2_D4
 
-		AUX_W
-		AUX_STATUS
-		CONT_AR	
+		AUX_W								; AUXILIAR PARA W EN INTERRUPCION
+		AUX_STATUS							; AUXILIAR PARA STATUS EN INTERRUPCION
+		CONT_AR								; CONTADORES ANTIREBOTE
 		CONT_AR_2
+;		INPUT_1								;PRIMER INPUT (0x0000 A 0x0FFF)
+;		INPUT_2								;SEGUNDO INPUT (0x0000 A 0x0FFF)
+;		RESULTADO							;RESULTADO (0x0000 A 0x0FFF)
+
 		ENDC		
 
 ;DECLARACION DE CONSTATNES
@@ -69,7 +85,19 @@ SUMAR	MACRO	DIGITO
 		CLRF	DIGITO				; LO PONE EN 0 PORQUE Z = 0
 		BTFSC	STATUS,Z
 		CALL	LOOP_DISPLAY
-		ENDM						
+		ENDM		
+				
+DISMEN	MACRO	DIGITO
+		MOVLW	0x10 			; .16
+		MOVWF	DIGITO
+		ENDM
+
+DISAPA	MACRO	DIGITO
+		MOVLW	0x11			;.17
+		MOVWF	DIGITO
+		ENDM
+
+
 
 ;INICIO DEL PROGRAMA
 		
@@ -103,11 +131,9 @@ INT_TMR0
 MOSTRAR_D2
 		MOSTRAR D2,PIN_D2
 		GOTO 	FIN_T0I
-
 MOSTRAR_D3
 		MOSTRAR D3,PIN_D3
 		GOTO 	FIN_T0I
-
 MOSTRAR_D4
 		MOSTRAR	D4,PIN_D4
 		
@@ -124,7 +150,9 @@ FIN_T0I
 		
 CONFI
 		BCF		STATUS,RP0 ; me muevo al Banco 0
+		BCF		STATUS,RP1
 		BSF		INTCON,GIE
+;		BSF		INTCON,PEIE
 		BSF		INTCON,T0IE
 
 		MOVLW	0X07
@@ -132,7 +160,7 @@ CONFI
 		MOVLW	.198
 		MOVWF	TMR0
 		
-		BSF		STATUS,RP0 ; me muevo al Banco 1
+		BSF		STATUS,RP0		; me muevo al Banco 1
 		;bcf		OPTION_REG,INTEDG
 		MOVLW	b'00000001'
 		MOVWF	TRISB	
@@ -143,7 +171,7 @@ CONFI
 		BSF		OPTION_REG,PS0
 		BSF		OPTION_REG,PS1
 		BSF		OPTION_REG,PS2
-		BCF		STATUS,RP0 ; regreso al Banco 0
+		BCF		STATUS,RP0		; regreso al Banco 0
 
 
 ;RUTINA PRINCIPAL
@@ -154,35 +182,56 @@ CONFI
 		CALL 	LIMPIAR_DISPLAY
 		CALL	LIMPIAR_N1_N2
 
-; CARGA INICIAL PARA PRUEBAS -------------------- delete me !!
-		MOVLW	d'1'
-		MOVWF	D3
-		MOVLW	d'3'
-		MOVWF	D4
-
+		CALL	LEERD
+		CALL	LEERN1
+		CALL	LEERN2
+		CALL	LEERR
 BOTONES
-		
 		BTFSC	BTN_G1			;BOTON G1 = INCREMENTA
 		CALL	DEMORA_AR
 		BTFSC	BTN_G1			
-		SUMAR	D4				;TIENE QUE SUMAR DE 000 A FFF 
+		GOTO	BTN_G1A			;SUMAR	D4				;TIENE QUE SUMAR DE 000 A FFF 
 		
 		BTFSC	BTN_G2			;BOTON G2 = RESTA
 		CALL	DEMORA_AR
 		BTFSC	BTN_G2	
-		CALL	LOOP_RESTAR		;RESTAR	D4		;VERFICA LOS DISPLAY Y LE RESTA DE A 1
+		GOTO	BTN_G2A			;CALL	RESTAR_1		;	CALL	LOOP_RESTAR		;RESTAR	D4		;VERFICA LOS DISPLAY Y LE RESTA DE A 1
 
 		BTFSC	BTN_R
 		CALL	DEMORA_AR
 		BTFSC	BTN_R
-		CALL	REINICIAR
+		GOTO	BTN_RA			;CALL	REINICIAR
 
 		BTFSC	BTN_M
 		CALL	DEMORA_AR
 		BTFSC	BTN_M
-		CALL	SETVARIABLE
+		GOTO	BTN_MA			;CALL	SETVARIABLE
 
 		GOTO 	BOTONES
+
+BTN_G1A	SUMAR	D4
+		CALL	GRABAR_TODO
+		GOTO	BOTONES
+
+BTN_G2A	CALL	RESTAR_1
+		CALL	GRABAR_TODO
+		GOTO	BOTONES
+
+BTN_RA	CALL	REINICIAR
+		CALL	GRABAR_TODO
+		GOTO	BOTONES
+
+BTN_MA	CALL	SETVARIABLE
+		CALL	GRABAR_TODO
+		GOTO	BOTONES
+
+
+GRABAR_TODO
+		CALL	GRABD
+		CALL	GRABN1
+		CALL	GRABN2
+		CALL	GRABR
+		RETURN
 
 SETVARIABLE
 		;SI INPUT_1 NO ESTA VACIO GUARDAR EN INPUT_2 Y MOSTRAR RESULTADO
@@ -191,8 +240,9 @@ SETVARIABLE
 		;HACER LA RESTA Y DESPUES PONER LOS ULTIMOS BITS DEL RESULTADO EN LAS VAR DE D2 D3 D4
 		;SI ES NEGATIVO D2 TIENE QUE TENER UN VALOR DE 16 (-)
 
-		BTFSS	N1_LOADED,1			; IF N1_LOADED
+		BTFSS	N1_LOADED,1			; IF N1_LOADED - Si no cargue 1 lo cargo
 		GOTO	CARGAR_N1			; SI
+		BTFSS	N2_LOADED,1			; IF N2_LOADED - Si no cargue 2 lo cargo, otro caso no hago nada
 		GOTO	CARGAR_N2			; NO
 
 FIN_SETVAR
@@ -222,105 +272,17 @@ CARGAR_N2
 		MOVWF	N2_D4
 		BSF 	N2_LOADED,1			;ESTAN CARGADOS LOS DOS
 		CALL	LIMPIAR_DISPLAY		;PONE EN 000
-		CALL 	RESOLVER			;RESUELVE LA RESTA
+		CALL	HACER_RESTA			;CALL 	RESOLVER			;RESUELVE LA RESTA
 		GOTO	FIN_SETVAR			
 
-RESOLVER
-		; RESTO DIGITO 4
-		MOVF	N2_D4,W		;MUEVE D4 del SEGUNDO NUMERO A W
-		SUBWF	N1_D4,W		;RESTA PARA VER SI HAY QUE PEDIR
-		BTFSS	STATUS,C	; c = 0 SI ES NEGATIVA LA RESTA
-		goto	RES_NEG4	;PIDE PRESTADO
-		goto	RES_POS4	;RESTA SIN PEDIR
-
-RES_NEG4
-		MOVF	N1_D4,W
-		SUBWF	N2_D4,W
-		
-		SUBLW	HEXA		; Ej : si 1-2 dio negativo entonces hago 16 -(2-1) // FALTA VER SI NO PUEDO PEDIR UNO AL SIGUIENTE DIGITO !!!!
-		DECF	N1_D3,F
-
-RES_POS4
-		MOVWF	D4
-		; RESTO DIGITO 3
-		MOVF	N2_D3,W
-		SUBWF	N1_D3,W
-		BTFSS	STATUS,C
-		goto	RES_NEG3
-		goto	RES_POS3
-		
-RES_NEG3
-		MOVF	N1_D3,W
-		SUBWF	N2_D3,W
-		SUBLW	HEXA
-		DECF	N1_D2,F
-	
-RES_POS3
-		MOVWF	D3
-		; RESTO DIGITO 2
-		MOVF	N2_D2,W
-		SUBWF	N1_D2,W
-		BTFSS	STATUS,C
-		goto	RES_NEG2
-		goto	RES_POS2
-		
-
-RES_NEG2
-		MOVF	N1_D2,W
-		SUBWF	N2_D2,W
-		SUBLW	HEXA
-		; SIGNO NEGATIVO --- HAY QUE VER EL SIGNO NEGATIVO 
-		
-		
-RES_POS2
-		MOVWF	D2
-RES_fin	
-		;;
-		RETURN
 
 REINICIAR
 		CALL	LIMPIAR_DISPLAY	;LIMPIA DISPLAY Y DEJA LAS VARIABLES EN 0
-		CALL	LIMPIAR_N1_N2	;
-		CLRF	INPUT_1
-		CLRF	INPUT_2
-		CLRF	RESULTADO
-		RETURN
-
-LOOP_RESTAR
-		MOVF	D4,W
-		BTFSC	STATUS,Z
-		goto	mepase
-		DECF	D4,F
-		goto	fin
-
-mepase	
-		MOVF	D3,W
-		IORWF	D2,W
-		BTFSC	STATUS,Z
-		goto	fin
-		
-		MOVLW	d'15'
-		MOVWF	D4			; 
-
-		MOVF	D3,W
-		BTFSC	STATUS,Z
-		goto	mepase2
-		DECF	D3,F
-		goto	fin
-		
-
-mepase2	MOVLW	d'15'
-		MOVWF	D3			;
-
-		MOVF	D2,W
-		BTFSC	STATUS,Z
-		goto	mepase3
-		DECF	D2,F
-		goto	fin
-
-mepase3	MOVLW	d'15'
-		MOVWF	D2			; 
-fin	
+		CALL	LIMPIAR_N1_N2	;LIMPIO N1, N2 Y FLAGS
+		CLRF	RES_NEG
+;		CLRF	INPUT_1
+;		CLRF	INPUT_2
+;		CLRF	RESULTADO
 		RETURN
 
 LOOP_DISPLAY
@@ -363,7 +325,7 @@ LIMPIAR_N1_N2
 		CLRF	N2_D2
 		CLRF	N2_D3
 		CLRF	N2_D4
-	RETURN
+		RETURN
 
 DEMORA_AR
 		MOVLW	.255
@@ -406,5 +368,668 @@ TAB_DISPLAY
 		RETLW	b'10111101'			;D
 		RETLW	b'11110011'			;E
 		RETLW	b'11100011'			;F
-		RETLW	b'10000001'			;-		
+		RETLW	b'10000001'			;-
+		RETLW	b'00000001'			;		
+
+RESTAR_1
+		CALL MOV_DIG_AUX
+		CALL RESTAR_AUX
+		
+		CALL MOV_AUX_DIG
+		RETURN
+
+HACER_RESTA
+							; EN REALIDAD VOY A HACER AUX - AUX2
+							; ASIGNO EL MAYOR ENTRE N1 Y N2 EN AUX, EL MENOR EN AUX2
+							; SI LOS TUVE QUE ROTAR LEVANTO EL FLAG DE RESULTADO NEGATIVO
+		BCF		RES_NEG,1
+		MOVF	N2_D2,W		;
+		SUBWF	N1_D2,W		;
+		BTFSS	STATUS,C	; c = 0 SI ES NEGATIVA LA RESTA DEBO ROTARLOS
+		goto	HR_NEG	;
+		BTFSS	STATUS,Z	; c = 1, SI Z=1 ERAN IGUALES VERIFICO SIGUIENTE DIGITO
+		GOTO	HR_POS		; 		 SI Z=0 RESTA POSITIVA , PUEDO OPERAR COMO ESTAN
+							; VERIFICO SIGUIENTE DIGITO
+		MOVF	N2_D3,W		;
+		SUBWF	N1_D3,W		;
+		BTFSS	STATUS,C	; c = 0 SI ES NEGATIVA LA RESTA DEBO ROTARLOS
+		goto	HR_NEG	;
+		BTFSS	STATUS,Z	; c = 1, SI Z=1 ERAN IGUALES VERIFICO SIGUIENTE DIGITO
+		GOTO	HR_POS		; 		 SI Z=0 RESTA POSITIVA , PUEDO OPERAR COMO ESTAN
+							; VERIFICO SIGUIENTE DIGITO
+
+		MOVF	N2_D4,W		;
+		SUBWF	N1_D4,W		;
+		BTFSS	STATUS,C	; c = 0 SI ES NEGATIVA LA RESTA DEBO ROTALOS
+		goto	HR_NEG	;
+		BTFSS	STATUS,Z	; c = 1, SI Z=1 ERAN IGUALES VERIFICO SIGUIENTE DIGITO
+							; 		 SI Z=0 RESTA POSITIVA , PUEDO OPERAR COMO ESTAN
+		
+HR_POS						; SI LA RESTA DABA POSITIVA OPERO COMO ESTAN
+		CALL	MOV_N1_AUX
+		CALL	MOV_N2_AUX2
+		GOTO	HR_OPERAR
+HR_NEG						; SI LA RESTA DABA NEGATIVA LOS INVIERTO 
+		BSF		RES_NEG,1			; SI LOS INVIERTO EL SIGNO DEBERIA SER NEGATIVO	CUANDO LO MUESTRO, ACTIVO FLAG
+		CALL	MOV_N2_AUX 
+		CALL 	MOV_N1_AUX2
+
+HR_OPERAR
+		MOVF	AUX2_D4,W	; APLICO RESTA LA CANT DE VECES DEL DIGITO MENOS SIGNIFICATIVO
+		MOVWF	CONT_RES
+		BTFSS	STATUS,Z
+		GOTO	LOOP_R4
+		GOTO	HR_D3
+		
+LOOP_R4	
+		CALL	RESTAR_AUX
+		DECFSZ	CONT_RES,1
+		GOTO	LOOP_R4	; FIN RESTA MENOS SIGNIFICATIVO
+
+HR_D3	MOVLW	.16		
+		MOVWF	CONT_RES2
+LOOP_R3A	
+		MOVF	AUX2_D3,W	; APLICO RESTA LA CANT DE VECES DEL 2DO DIGITO * 16
+		MOVWF	CONT_RES
+		BTFSS	STATUS,Z
+		GOTO	LOOP_R3B
+		GOTO	HR_D2
+
+LOOP_R3B 
+		CALL	RESTAR_AUX
+		DECFSZ	CONT_RES,1
+		GOTO	LOOP_R3B
+		DECFSZ	CONT_RES2,1
+		GOTO	LOOP_R3A	; FIN 2DO DIGITO
+
+HR_D2	MOVLW	.2			; APLICO RESTA LA CANT DE VECES DEL 3ER DIGITO * 256
+		MOVWF	CONT_RES3
+LOOP_R2A
+		MOVLW	.128		
+		MOVWF	CONT_RES2
+LOOP_R2B
+		MOVF	AUX2_D2,W
+		MOVWF	CONT_RES
+		BTFSS	STATUS,Z
+		GOTO	LOOP_R2C
+		GOTO	HR_MOV
+
+LOOP_R2C	
+		CALL	RESTAR_AUX
+		DECFSZ	CONT_RES,1
+		GOTO	LOOP_R2C
+		DECFSZ	CONT_RES2,1
+		GOTO	LOOP_R2B
+		DECFSZ	CONT_RES3,1
+		GOTO	LOOP_R2A	; FIN 3ER DIGITO
+HR_MOV
+		CALL	MOV_AUX_DIG
+		BTFSC	RES_NEG,1		; CHECK FLAG DE MENOS
+		GOTO	HR_MINUS
+		GOTO	HR_FIN
+HR_MINUS
+		MOVF	D3,W
+		IORWF	D2,W
+		BTFSC	STATUS,Z
+		GOTO	HR_M3
+		MOVF	D2,W
+		BTFSC	STATUS,Z
+		GOTO	HR_M2
+		DISMEN	D1
+		GOTO	HR_FIN
+		
+HR_M3	DISMEN	D3
+		DISAPA	D2
+		DISAPA	D1
+		GOTO	HR_FIN
+HR_M2	DISMEN	D2
+		DISAPA	D1
+		GOTO	HR_FIN	
+HR_FIN	
+		RETURN
+
+MOV_N1_AUX
+		MOVF	N1_D4,W
+		MOVWF	AUX_D4
+		MOVF	N1_D3,W
+		MOVWF	AUX_D3
+		MOVF	N1_D2,W
+		MOVWF	AUX_D2
+		MOVF	N1_D1,W
+		MOVWF	AUX_D1
+		RETURN
+
+MOV_N1_AUX2
+		MOVF	N1_D4,W
+		MOVWF	AUX2_D4
+		MOVF	N1_D3,W
+		MOVWF	AUX2_D3
+		MOVF	N1_D2,W
+		MOVWF	AUX2_D2
+		MOVF	N1_D1,W
+		MOVWF	AUX2_D1
+		RETURN
+
+MOV_N2_AUX
+		MOVF	N2_D4,W
+		MOVWF	AUX_D4
+		MOVF	N2_D3,W
+		MOVWF	AUX_D3
+		MOVF	N2_D2,W
+		MOVWF	AUX_D2
+		MOVF	N2_D1,W
+		MOVWF	AUX_D1
+		RETURN
+
+MOV_N2_AUX2
+		MOVF	N2_D4,W
+		MOVWF	AUX2_D4
+		MOVF	N2_D3,W
+		MOVWF	AUX2_D3
+		MOVF	N2_D2,W
+		MOVWF	AUX2_D2
+		MOVF	N2_D1,W
+		MOVWF	AUX2_D1
+		RETURN
+
+
+MOV_DIG_AUX
+		MOVF	D4,W
+		MOVWF	AUX_D4
+		MOVF	D3,W
+		MOVWF	AUX_D3
+		MOVF	D2,W
+		MOVWF	AUX_D2
+		MOVF	D1,W
+		MOVWF	AUX_D1
+		RETURN
+
+MOV_AUX_DIG
+		MOVF	AUX_D4,W
+		MOVWF	D4
+		MOVF	AUX_D3,W
+		MOVWF	D3
+		MOVF	AUX_D2,W
+		MOVWF	D2
+		MOVF	AUX_D1,W
+		MOVWF	D1
+		RETURN
+			
+
+RESTAR_AUX
+		MOVF	AUX_D4,W
+		BTFSC	STATUS,Z
+		goto	R1mepase
+		DECF	AUX_D4,F
+		goto	R1fin
+
+R1mepase	
+		MOVF	AUX_D3,W
+		IORWF	AUX_D2,W
+		BTFSC	STATUS,Z
+		goto	R1fin
+		MOVLW	d'15'
+		MOVWF	AUX_D4			; 
+		MOVF	AUX_D3,W
+		BTFSC	STATUS,Z
+		goto	R1mepase2
+		DECF	AUX_D3,F
+		goto	R1fin
+R1mepase2	
+		MOVLW	d'15'
+		MOVWF	AUX_D3			;
+		MOVF	AUX_D2,W
+		BTFSC	STATUS,Z
+		goto	R1mepase3
+		DECF	AUX_D2,F
+		goto	R1fin
+R1mepase3	
+		MOVLW	d'15'
+		MOVWF	AUX_D2			; 
+R1fin	
+		RETURN
+
+LEERD
+		movlW	0x03                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	D4
+
+		movlW	0x02                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	D3
+	
+		movlW	0x01                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	D2
+
+		movlW	0x00                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	D1
+		RETURN
+
+GRABD
+		movlW	0x03                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	D4,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x02                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	D3,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x01                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	D2,W
+		;bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		
+		movlW	0x00                       ;grabar un dato en eeprom
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf 	STATUS,RP0                   ;cambiar a banco 0
+		movf	D1,W
+		;bsf 	STATUS,RP0                   ;cambiar a banco 1
+		movWf 	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		RETURN
+
+LEERN1
+		movlW	0x08                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N1_D4
+
+		movlW	0x07                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N1_D3
+	
+		movlW	0x06                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N1_D2
+
+		movlW	0x05                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N1_D1
+
+		movlW	0x04                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N1_LOADED
+		RETURN
+
+
+GRABN1
+		movlW	0x08                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N1_D4,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x07                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N1_D3,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x06                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N1_D2,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		
+		movlW	0x05                      ;grabar un dato en eeprom
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf 	STATUS,RP0                   ;cambiar a banco 0
+		movf	N1_D1,W
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		movWf 	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x04                       ;grabar un dato en eeprom
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf 	STATUS,RP0                   ;cambiar a banco 0
+		movf	N1_LOADED,W
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		movWf 	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		RETURN
+
+
+LEERN2
+		movlW	0x0D                      ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N2_D4
+
+		movlW	0x0C                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N2_D3
+	
+		movlW	0x0B                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N2_D2
+
+		movlW	0x0A                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N2_D1
+
+		movlW	0x09                       ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	N2_LOADED
+		RETURN
+
+
+GRABN2
+		movlW	0x0D                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N2_D4,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x0C                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N2_D3,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x0B                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	N2_D2,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		
+		movlW	0x0A                      ;grabar un dato en eeprom
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf 	STATUS,RP0                   ;cambiar a banco 0
+		movf	N2_D1,W
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		movWf 	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+
+		movlW	0x09                       ;grabar un dato en eeprom
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf 	STATUS,RP0                   ;cambiar a banco 0
+		movf	N2_LOADED,W
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
+		movWf 	EEDATA
+		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
+		return
+
+LEERR
+		movlW	0x0E                      ;leer un dato de eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movWf	RES_NEG
+		RETURN
+
+GRABR
+		movlW	0x0E                       ;grabar un dato en eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+		movWf	EEADR
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		movf	RES_NEG,W
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		movWf	EEDATA
+		call	grabar_eeprom				; llamada a rutina grabar_eeprom
+		RETURN
+
+grabar_eeprom
+		;escribir el dato en la eeprom
+		bsf		STATUS,RP0                   ;cambiar a banco 1
+		bcf		STATUS,RP1
+ 		BSF		EECON1,WREN			;HABILITA ESCRITURA EN EEPROM
+		BCF		INTCON,GIE			; DESHABILITA INTERRUPCIONES 
+		MOVLW	0x55				;PREPARA SECUENCIA DE SEGURIDAD
+		MOVWF	EECON2				;ESCRIBE PRIMER DATO DE SECUENCIA
+		MOVLW	0xAA				;SEGUNDO DATO
+		MOVWF	EECON2				;ESCRIBE SEGUNDO DATO DE SECUENCIA
+		BSF		EECON1,WR			;INICIA CICLO DE ESCRITURA
+EW      BTFSC	EECON1,WR			;MALLA PARA ESPERAR AL FINAL DEL CICLO
+		GOTO	EW					;SI WR=1, CICLO DE ESCRITURA AUN NO TERMINA
+		nop
+		bcf		EECON1,EEIF
+		BCF		EECON1,WREN			;DESHABILITA ESCRITURA
+		BSF		INTCON,GIE			;HABILITA INTERRUPCIONES 
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		bcf		STATUS,RP1
+		RETURN
+
+;------------------------------------------------------------
+;                  DATOS EN MEMORIA EEPROM
+;------------------------------------------------------------
+		org  0x2100
+		data   H'17'	;D1
+		data   H'17'	;D2
+		data   H'16'	;D3
+		data   H'01'	;D4
+		data   H'02'	;N1_LOADED
+		data   H'00'	;N1_D1
+		data   H'00'	;N1_D2
+		data   H'00'	;N1_D3
+		data   H'01'	;N1_D4
+		data   H'02'	;N2_LOADED
+		data   H'00'	;N2_D1
+		data   H'00'	;N2_D2
+		data   H'00'	;N2_D3
+		data   H'02'	;N2_D4
+		data   H'02'	;RES_NEG
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+		data   0xff
+
 		END
