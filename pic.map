@@ -1,12 +1,12 @@
 MPLINK 4.31, Linker
-Linker Map File - Created Mon Nov 12 16:56:22 2018
+Linker Map File - Created Thu Nov 15 21:08:20 2018
 
                                  Section Info
                   Section       Type    Address   Location Size(Bytes)
                 ---------  ---------  ---------  ---------  ---------
                    .org_0       code   0x000000    program   0x000002
                    .cinit    romdata   0x000001    program   0x000004
-                   .org_1       code   0x000004    program   0x000128
+                   .org_1       code   0x000004    program   0x0001e4
       .config_2007_MAIN.O       code   0x002007    program   0x000002
 
 
@@ -15,50 +15,84 @@ Linker Map File - Created Mon Nov 12 16:56:22 2018
                                Start         End      
                            ---------   ---------      
                             0x000000    0x000002      
-                            0x000004    0x000097      
+                            0x000004    0x0000f5      
                             0x002007    0x002007      
-            152 out of 2181 program addresses used, program memory utilization is 6%
+            246 out of 2181 program addresses used, program memory utilization is 11%
 
 
 
                               Symbols - Sorted by Name
                      Name    Address   Location    Storage File                     
                 ---------  ---------  ---------  --------- ---------                
-                  BOTONES   0x000043    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                    CONFI   0x00002c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                DEMORA_AR   0x00007d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                  FIN_T0I   0x000026    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-          LIMPIAR_DISPLAY   0x000078    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                  LOOP_AR   0x00007f    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                LOOP_AR_2   0x000081    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-             LOOP_DISPLAY   0x000064    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              LOOP_RESTAR   0x000060    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-               MOSTRAR_D2   0x000015    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-               MOSTRAR_D3   0x00001b    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-               MOSTRAR_D4   0x000021    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                REINICIAR   0x00005b    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              SETVARIABLE   0x00005a    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              TAB_DISPLAY   0x000086    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  BOTONES   0x000047    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                CARGAR_N1   0x000062    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                CARGAR_N2   0x00006d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                    CONFI   0x00002d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                DEMORA_AR   0x0000db    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               FIN_SETVAR   0x000061    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  FIN_T0I   0x000027    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 INT_TMR0   0x000005    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+          LIMPIAR_DISPLAY   0x0000cb    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+            LIMPIAR_N1_N2   0x0000d0    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  LOOP_AR   0x0000dd    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                LOOP_AR_2   0x0000df    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+             LOOP_DISPLAY   0x0000b7    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              LOOP_RESTAR   0x00009d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D2   0x000016    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D3   0x00001c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D4   0x000022    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                REINICIAR   0x000097    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RESOLVER   0x000079    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG2   0x000092    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG3   0x000088    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG4   0x00007e    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS2   0x000095    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS3   0x00008c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS4   0x000082    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  RES_fin   0x000096    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              SETVARIABLE   0x00005e    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              TAB_DISPLAY   0x0000e4    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                      fin   0x0000b6    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                   mepase   0x0000a2    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  mepase2   0x0000ad    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  mepase3   0x0000b4    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
 
 
 
                               Symbols - Sorted by Address
                      Name    Address   Location    Storage File                     
                 ---------  ---------  ---------  --------- ---------                
-               MOSTRAR_D2   0x000015    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-               MOSTRAR_D3   0x00001b    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-               MOSTRAR_D4   0x000021    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                  FIN_T0I   0x000026    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                    CONFI   0x00002c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                  BOTONES   0x000043    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              SETVARIABLE   0x00005a    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                REINICIAR   0x00005b    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              LOOP_RESTAR   0x000060    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-             LOOP_DISPLAY   0x000064    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-          LIMPIAR_DISPLAY   0x000078    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                DEMORA_AR   0x00007d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                  LOOP_AR   0x00007f    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-                LOOP_AR_2   0x000081    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
-              TAB_DISPLAY   0x000086    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 INT_TMR0   0x000005    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D2   0x000016    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D3   0x00001c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               MOSTRAR_D4   0x000022    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  FIN_T0I   0x000027    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                    CONFI   0x00002d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  BOTONES   0x000047    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              SETVARIABLE   0x00005e    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+               FIN_SETVAR   0x000061    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                CARGAR_N1   0x000062    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                CARGAR_N2   0x00006d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RESOLVER   0x000079    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG4   0x00007e    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS4   0x000082    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG3   0x000088    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS3   0x00008c    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_NEG2   0x000092    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                 RES_POS2   0x000095    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  RES_fin   0x000096    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                REINICIAR   0x000097    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              LOOP_RESTAR   0x00009d    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                   mepase   0x0000a2    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  mepase2   0x0000ad    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  mepase3   0x0000b4    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                      fin   0x0000b6    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+             LOOP_DISPLAY   0x0000b7    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+          LIMPIAR_DISPLAY   0x0000cb    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+            LIMPIAR_N1_N2   0x0000d0    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                DEMORA_AR   0x0000db    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                  LOOP_AR   0x0000dd    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+                LOOP_AR_2   0x0000df    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
+              TAB_DISPLAY   0x0000e4    program     static C:\Users\Feddy\Desktop\TPARQ\main.asm
 
 
