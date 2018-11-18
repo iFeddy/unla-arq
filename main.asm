@@ -1,16 +1,5 @@
 		#INCLUDE<P16F628.INC>
-											;__CONFIG 3F10
-_INCRC_OSC_NOCLKOUT   equ  0x3FFC
-_WDT_OFF              equ  0x3FFB
-_PWRTE_ON             equ  0x3FF7
-_MCLRE_OFF            equ  0x3FDF
-_BODEN_OFF            equ  0x3FBF
-_LVP_OFF              equ  0x3F7F
-_CPD_OFF              equ  0x3F7F
-_CP_OFF               equ  0x3FFF
-
-		__config _INCRC_OSC_NOCLKOUT & _WDT_OFF & _PWRTE_ON & _MCLRE_OFF & _BODEN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF
-
+		__CONFIG 3F10
 		
 ;DECLARACION DE ESPACIOS DE MEMORIA A USAR		
 		CBLOCK	0X20
@@ -60,8 +49,8 @@ _CP_OFF               equ  0x3FFF
 
 #DEFINE PIN_D1 	3
 #DEFINE PIN_D2 	2
-#DEFINE PIN_D3 	0
-#DEFINE PIN_D4 	1
+#DEFINE PIN_D3 	1
+#DEFINE PIN_D4 	0
 
 #DEFINE	CTRL_DISPLAY	PORTA
 #DEFINE	APAGAR_DISPLAYS CLRF	PORTA
@@ -139,7 +128,7 @@ MOSTRAR_D4
 		
 FIN_T0I
 ;REINICIA TIMER Y RECUPERA STATUS Y W
-		MOVLW	.198
+		MOVLW	.220
 		MOVWF	TMR0
 		MOVF	AUX_STATUS,W
 		MOVWF	STATUS
@@ -157,11 +146,10 @@ CONFI
 
 		MOVLW	0X07
 		MOVWF	CMCON; CMCON SE TIENE QUE ESTABLECER EN 7 PARA USAR TODO EL PORTA
-		MOVLW	.198
+		MOVLW	.220
 		MOVWF	TMR0
 		
 		BSF		STATUS,RP0		; me muevo al Banco 1
-		;bcf		OPTION_REG,INTEDG
 		MOVLW	b'00000001'
 		MOVWF	TRISB	
 		MOVLW	b'11010000'
@@ -181,7 +169,7 @@ CONFI
 		CLRF	PORTB
 		CALL 	LIMPIAR_DISPLAY
 		CALL	LIMPIAR_N1_N2
-
+		CALL	INI_EEP			; LIMPIO EEPROM
 		CALL	LEERD
 		CALL	LEERN1
 		CALL	LEERN2
@@ -190,56 +178,50 @@ BOTONES
 		BTFSC	BTN_G1			;BOTON G1 = INCREMENTA
 		CALL	DEMORA_AR
 		BTFSC	BTN_G1			
-		GOTO	BTN_G1A			;SUMAR	D4				;TIENE QUE SUMAR DE 000 A FFF 
+		GOTO	BTN_G1A			; TIENE QUE SUMAR DE 000 A FFF 
 		
 		BTFSC	BTN_G2			;BOTON G2 = RESTA
 		CALL	DEMORA_AR
 		BTFSC	BTN_G2	
-		GOTO	BTN_G2A			;CALL	RESTAR_1		;	CALL	LOOP_RESTAR		;RESTAR	D4		;VERFICA LOS DISPLAY Y LE RESTA DE A 1
+		GOTO	BTN_G2A			;VERFICA LOS DISPLAY Y LE RESTA DE A 1
 
-		BTFSC	BTN_R
+		BTFSC	BTN_R			; BOTON R = RESETEAR A CERO
 		CALL	DEMORA_AR
 		BTFSC	BTN_R
-		GOTO	BTN_RA			;CALL	REINICIAR
+		GOTO	BTN_RA			;REINICIA LAS VARIABLES
 
-		BTFSC	BTN_M
+		BTFSC	BTN_M			; BOTON M = CAMBIO DE INPUT O RESUELVO RESTA
 		CALL	DEMORA_AR
 		BTFSC	BTN_M
-		GOTO	BTN_MA			;CALL	SETVARIABLE
+		GOTO	BTN_MA			;DEPENDIENDO DE LOS FLAGS N1_LOADED Y N2_LOADED CARGO N1 O CARGO N2 Y HAGO LA RESTA
 
 		GOTO 	BOTONES
 
-BTN_G1A	SUMAR	D4
+BTN_G1A	SUMAR	D4				; HAGO LA SUMA Y GRABO VALORES EN EEPROM
 		CALL	GRABAR_TODO
 		GOTO	BOTONES
 
-BTN_G2A	CALL	RESTAR_1
+BTN_G2A	CALL	RESTAR_1		; RESTO DE A UNO Y GRABO VALORES EN EEPROM
 		CALL	GRABAR_TODO
 		GOTO	BOTONES
 
-BTN_RA	CALL	REINICIAR
+BTN_RA	CALL	REINICIAR		; REINICIO VALORES Y LOS GRABO EN EEPROM
 		CALL	GRABAR_TODO
 		GOTO	BOTONES
 
-BTN_MA	CALL	SETVARIABLE
+BTN_MA	CALL	SETVARIABLE		; CAMBIO DE INPUT O RESUELVO Y GRABO CAMBIOS EN EEPROM
 		CALL	GRABAR_TODO
 		GOTO	BOTONES
 
 
-GRABAR_TODO
-		CALL	GRABD
-		CALL	GRABN1
-		CALL	GRABN2
-		CALL	GRABR
+GRABAR_TODO						; GRABO TODO EN EEPROM
+		CALL	GRABD			;	GRABO VALORES DEL DISPLAY
+		CALL	GRABN1			;	GRABO VALORES DEL NUMERO 1 (N1) 
+		CALL	GRABN2			;	GRABO VALORES DEL NUMERO 2 (N2)
+		CALL	GRABR			;	GRABO VALORES DEL NUMERO 1 (N1)
 		RETURN
 
 SETVARIABLE
-		;SI INPUT_1 NO ESTA VACIO GUARDAR EN INPUT_2 Y MOSTRAR RESULTADO
-		;SINO GUARDAR VARIABLE EN INPUT_1 Y VOLVER A INGRESAR NUMERO
-		;MOVER D2 D3 D4 A LOS ULTIMOS BITS DE INPUT
-		;HACER LA RESTA Y DESPUES PONER LOS ULTIMOS BITS DEL RESULTADO EN LAS VAR DE D2 D3 D4
-		;SI ES NEGATIVO D2 TIENE QUE TENER UN VALOR DE 16 (-)
-
 		BTFSS	N1_LOADED,1			; IF N1_LOADED - Si no cargue 1 lo cargo
 		GOTO	CARGAR_N1			; SI
 		BTFSS	N2_LOADED,1			; IF N2_LOADED - Si no cargue 2 lo cargo, otro caso no hago nada
@@ -248,7 +230,7 @@ SETVARIABLE
 FIN_SETVAR
 		RETURN
 
-CARGAR_N1		
+CARGAR_N1							; CARGO VALORES DEL DISPLAY EN EL NUMERO 1 (N1) Y LIMPIO DISPLAY		
 		MOVF	D1,W
 		MOVWF	N1_D1
 		MOVF	D2,W
@@ -261,7 +243,7 @@ CARGAR_N1
 		CALL	LIMPIAR_DISPLAY
 		GOTO	FIN_SETVAR
 
-CARGAR_N2
+CARGAR_N2							; CARGO VALORES DEL DISPLAY EN EL NUMERO 2 (N2), LIMPIO DISPLAY Y HAGO LA RESTA
 		MOVF	D1,W
 		MOVWF	N2_D1
 		MOVF	D2,W
@@ -272,17 +254,15 @@ CARGAR_N2
 		MOVWF	N2_D4
 		BSF 	N2_LOADED,1			;ESTAN CARGADOS LOS DOS
 		CALL	LIMPIAR_DISPLAY		;PONE EN 000
-		CALL	HACER_RESTA			;CALL 	RESOLVER			;RESUELVE LA RESTA
+		CALL	HACER_RESTA			;RESUELVE LA RESTA
 		GOTO	FIN_SETVAR			
 
 
-REINICIAR
-		CALL	LIMPIAR_DISPLAY	;LIMPIA DISPLAY Y DEJA LAS VARIABLES EN 0
-		CALL	LIMPIAR_N1_N2	;LIMPIO N1, N2 Y FLAGS
-		CLRF	RES_NEG
-;		CLRF	INPUT_1
-;		CLRF	INPUT_2
-;		CLRF	RESULTADO
+REINICIAR							; LIMPIO VALORES Y LOS GRABO EN EEPROM
+		CALL	LIMPIAR_DISPLAY		;		LIMPIA DISPLAY Y DEJA LAS VARIABLES EN 0
+		CALL	LIMPIAR_N1_N2		;		LIMPIO N1, N2 Y FLAGS
+		CLRF	RES_NEG				;		LIMPIO FLAG DE RESULTADO NEGATIVO
+		CALL	GRABAR_TODO			;		GRABO TODO EN EEPROM
 		RETURN
 
 LOOP_DISPLAY
@@ -307,14 +287,14 @@ LOOP_DISPLAY
 		CALL	LIMPIAR_DISPLAY	;LLEGO A 0X0FFF
 		RETURN
 
-LIMPIAR_DISPLAY
+LIMPIAR_DISPLAY					; PONGO EN 0 TODOS LOS VALORES DEL DIPLAY
 		CLRF	D4
 		CLRF	D3
 		CLRF	D2
 		CLRF	D1
 		RETURN
 
-LIMPIAR_N1_N2
+LIMPIAR_N1_N2					; PONGO EN CERO LOS VALORES DE LOS NUMEROS 1 Y 2, TAMBIEN SUS FLAGS DE INPUT 
 		CLRF	N1_LOADED
 		CLRF	N1_D1
 		CLRF	N1_D2
@@ -327,7 +307,7 @@ LIMPIAR_N1_N2
 		CLRF	N2_D4
 		RETURN
 
-DEMORA_AR
+DEMORA_AR						; DEMORA ANTIREBOTE DE BOTONES
 		MOVLW	.255
 		MOVWF	CONT_AR
 LOOP_AR
@@ -369,19 +349,18 @@ TAB_DISPLAY
 		RETLW	b'11110011'			;E
 		RETLW	b'11100011'			;F
 		RETLW	b'10000001'			;-
-		RETLW	b'00000001'			;		
+		RETLW	b'00000001'			;	(DIGITO APAGADO)
 
-RESTAR_1
+RESTAR_1							; HAGO LA RESTA DE A UNO SOBRE EL DIGITO EN EL DISPLAY
 		CALL MOV_DIG_AUX
 		CALL RESTAR_AUX
-		
 		CALL MOV_AUX_DIG
 		RETURN
 
-HACER_RESTA
-							; EN REALIDAD VOY A HACER AUX - AUX2
-							; ASIGNO EL MAYOR ENTRE N1 Y N2 EN AUX, EL MENOR EN AUX2
-							; SI LOS TUVE QUE ROTAR LEVANTO EL FLAG DE RESULTADO NEGATIVO
+HACER_RESTA					; HAGO LA RESTA N1 - N2
+							; 	EN REALIDAD VOY A HACER AUX - AUX2
+							; 	ASIGNO EL MAYOR ENTRE N1 Y N2 EN AUX, EL MENOR EN AUX2
+							; 	SI LOS TUVE QUE ROTAR LEVANTO EL FLAG DE RESULTADO NEGATIVO
 		BCF		RES_NEG,1
 		MOVF	N2_D2,W		;
 		SUBWF	N1_D2,W		;
@@ -414,7 +393,10 @@ HR_NEG						; SI LA RESTA DABA NEGATIVA LOS INVIERTO
 		CALL	MOV_N2_AUX 
 		CALL 	MOV_N1_AUX2
 
-HR_OPERAR
+HR_OPERAR					; VOY A HACER LA RESTA EL MAYOR MENOS EL MENOR
+							;		AL PRIMERO LE RESTO LA CANTIDAD DE VECES EL DIGITO MENOS SIGNIFICATIVO (D4) DEL SEGUNDO
+							;		LUEGO LE RESTO 16 VECES LA CANTIDAD DE VECES EL DIGITO SIGUIENTE (D3) DEL SEGUNDO
+							;		LUEGO LE RESTO 256 VECES LA CANTIDAD DE VECES EL DIGITO SIGUIENTE (D2) DEL SEGUNDO
 		MOVF	AUX2_D4,W	; APLICO RESTA LA CANT DE VECES DEL DIGITO MENOS SIGNIFICATIVO
 		MOVWF	CONT_RES
 		BTFSS	STATUS,Z
@@ -429,7 +411,7 @@ LOOP_R4
 HR_D3	MOVLW	.16		
 		MOVWF	CONT_RES2
 LOOP_R3A	
-		MOVF	AUX2_D3,W	; APLICO RESTA LA CANT DE VECES DEL 2DO DIGITO * 16
+		MOVF	AUX2_D3,W		; APLICO RESTA LA CANT DE VECES DEL 2DO DIGITO * 16
 		MOVWF	CONT_RES
 		BTFSS	STATUS,Z
 		GOTO	LOOP_R3B
@@ -440,9 +422,9 @@ LOOP_R3B
 		DECFSZ	CONT_RES,1
 		GOTO	LOOP_R3B
 		DECFSZ	CONT_RES2,1
-		GOTO	LOOP_R3A	; FIN 2DO DIGITO
+		GOTO	LOOP_R3A		; FIN 2DO DIGITO
 
-HR_D2	MOVLW	.2			; APLICO RESTA LA CANT DE VECES DEL 3ER DIGITO * 256
+HR_D2	MOVLW	.2				; APLICO RESTA LA CANT DE VECES DEL 3ER DIGITO * 256
 		MOVWF	CONT_RES3
 LOOP_R2A
 		MOVLW	.128		
@@ -461,13 +443,15 @@ LOOP_R2C
 		DECFSZ	CONT_RES2,1
 		GOTO	LOOP_R2B
 		DECFSZ	CONT_RES3,1
-		GOTO	LOOP_R2A	; FIN 3ER DIGITO
+		GOTO	LOOP_R2A		; FIN 3ER DIGITO
 HR_MOV
 		CALL	MOV_AUX_DIG
 		BTFSC	RES_NEG,1		; CHECK FLAG DE MENOS
 		GOTO	HR_MINUS
 		GOTO	HR_FIN
-HR_MINUS
+HR_MINUS						; SI LEVANTE EL FLAG DE MENOS TENGO QUE VER DONDE LO UBICO
+								;	SI EL RESULTADO ES 1 DIGITO, MENOS EN D3 Y APAGO D2,D1
+								;	SI EL RESULTADO ES 2 DIGITOS, MENOS EN D2 Y APAGO D1
 		MOVF	D3,W
 		IORWF	D2,W
 		BTFSC	STATUS,Z
@@ -488,7 +472,7 @@ HR_M2	DISMEN	D2
 HR_FIN	
 		RETURN
 
-MOV_N1_AUX
+MOV_N1_AUX						; MUEVO NUMERO 1 A UN AUX, LA RESTA LA VOY A HACER AUX-AUX2
 		MOVF	N1_D4,W
 		MOVWF	AUX_D4
 		MOVF	N1_D3,W
@@ -499,7 +483,7 @@ MOV_N1_AUX
 		MOVWF	AUX_D1
 		RETURN
 
-MOV_N1_AUX2
+MOV_N1_AUX2						; MUEVO NUMERO 1 A UN AUX2, LA RESTA LA VOY A HACER AUX-AUX2
 		MOVF	N1_D4,W
 		MOVWF	AUX2_D4
 		MOVF	N1_D3,W
@@ -510,7 +494,7 @@ MOV_N1_AUX2
 		MOVWF	AUX2_D1
 		RETURN
 
-MOV_N2_AUX
+MOV_N2_AUX						; MUEVO NUMERO 2 A UN AUX, LA RESTA LA VOY A HACER AUX-AUX2
 		MOVF	N2_D4,W
 		MOVWF	AUX_D4
 		MOVF	N2_D3,W
@@ -521,7 +505,7 @@ MOV_N2_AUX
 		MOVWF	AUX_D1
 		RETURN
 
-MOV_N2_AUX2
+MOV_N2_AUX2						; MUEVO NUMERO 2 A UN AUX2, LA RESTA LA VOY A HACER AUX-AUX2
 		MOVF	N2_D4,W
 		MOVWF	AUX2_D4
 		MOVF	N2_D3,W
@@ -533,7 +517,7 @@ MOV_N2_AUX2
 		RETURN
 
 
-MOV_DIG_AUX
+MOV_DIG_AUX						; MUEVO DIGITOS DEL DISPLAY A UN AUX
 		MOVF	D4,W
 		MOVWF	AUX_D4
 		MOVF	D3,W
@@ -544,7 +528,7 @@ MOV_DIG_AUX
 		MOVWF	AUX_D1
 		RETURN
 
-MOV_AUX_DIG
+MOV_AUX_DIG						; RESTAURO DEL AUX A DIGITOS DEL DISPLAY
 		MOVF	AUX_D4,W
 		MOVWF	D4
 		MOVF	AUX_D3,W
@@ -556,7 +540,7 @@ MOV_AUX_DIG
 		RETURN
 			
 
-RESTAR_AUX
+RESTAR_AUX						; AL AUX LE RESTO UNO 
 		MOVF	AUX_D4,W
 		BTFSC	STATUS,Z
 		goto	R1mepase
@@ -589,7 +573,22 @@ R1mepase3
 R1fin	
 		RETURN
 
-LEERD
+INI_EEP								; USADA PARA EL PRIMER BOOTEO, PARA ELIMINAR BASURA DE LA EEPROM
+		movlW	0x00                       	;leer un dato de eeprom
+		bsf		STATUS,RP0                  ;cambiar a banco 1
+		movWf	EEADR
+		bsf		EECON1,RD
+		movf	EEDATA,W
+		bcf		STATUS,RP0                   ;cambiar a banco 0
+		
+		XORLW	H'FF'						; ME FIJO SI LEO BASURA DE EEPROM
+		BTFSC	STATUS,Z					; 
+		CALL	REINICIAR					; SI LEI BASURA ES EL PRIMER BOOTEO, REINICIO LAS VARIABLES A CERO Y GRABO EEPROM
+		
+		RETURN
+
+
+LEERD								; LEO DIGITOS DEL DISPLAY DE LA EEPROM
 		movlW	0x03                       ;leer un dato de eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		movWf	EEADR
@@ -623,7 +622,7 @@ LEERD
 		movWf	D1
 		RETURN
 
-GRABD
+GRABD								; GRABO DIGITOS DEL DISPLAY A LA EEPROM
 		movlW	0x03                       ;grabar un dato en eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		bcf		STATUS,RP1
@@ -650,7 +649,7 @@ GRABD
 		movWf	EEADR
 		bcf		STATUS,RP0                   ;cambiar a banco 0
 		movf	D2,W
-		;bsf		STATUS,RP0                   ;cambiar a banco 1
+		bsf		STATUS,RP0                   ;cambiar a banco 1
 		movWf	EEDATA
 		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
 		
@@ -660,12 +659,12 @@ GRABD
 		movWf	EEADR
 		bcf 	STATUS,RP0                   ;cambiar a banco 0
 		movf	D1,W
-		;bsf 	STATUS,RP0                   ;cambiar a banco 1
+		bsf 	STATUS,RP0                   ;cambiar a banco 1
 		movWf 	EEDATA
 		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
 		RETURN
 
-LEERN1
+LEERN1							; LEO EL VALOR DEL NUMERO 1 Y EL FLAG SI FUE CARGADO DE LA EEPROM
 		movlW	0x08                       ;leer un dato de eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		movWf	EEADR
@@ -708,7 +707,7 @@ LEERN1
 		RETURN
 
 
-GRABN1
+GRABN1								; GRABO EL NUMERO 1 Y EL FLAG SI FUE CARGADO EN LA EEPROM
 		movlW	0x08                       ;grabar un dato en eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		bcf		STATUS,RP1
@@ -761,7 +760,7 @@ GRABN1
 		RETURN
 
 
-LEERN2
+LEERN2							; LEO EL VALOR DEL NUMERO 2 Y EL FLAG SI FUE CARGADO DE LA EEPROM
 		movlW	0x0D                      ;leer un dato de eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		movWf	EEADR
@@ -804,7 +803,7 @@ LEERN2
 		RETURN
 
 
-GRABN2
+GRABN2								; GRABO EL NUMERO 2 Y EL FLAG DE SI FUE INGRESADO EN EEPROM
 		movlW	0x0D                       ;grabar un dato en eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		bcf		STATUS,RP1
@@ -856,7 +855,7 @@ GRABN2
 		call 	grabar_eeprom               ;llamada a rutina grabar_eeprom
 		return
 
-LEERR
+LEERR								; LEO EL FLAG DE RESULTADO NEGATIVO EN LA EEPROM
 		movlW	0x0E                      ;leer un dato de eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		movWf	EEADR
@@ -866,7 +865,7 @@ LEERR
 		movWf	RES_NEG
 		RETURN
 
-GRABR
+GRABR								; GRABO EL FLAG DE RESULTADO NEGATIVO EN LA EEPROM
 		movlW	0x0E                       ;grabar un dato en eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		bcf		STATUS,RP1
@@ -878,7 +877,7 @@ GRABR
 		call	grabar_eeprom				; llamada a rutina grabar_eeprom
 		RETURN
 
-grabar_eeprom
+grabar_eeprom						; RUTINA DE GRABADO EN EEPROM
 		;escribir el dato en la eeprom
 		bsf		STATUS,RP0                   ;cambiar a banco 1
 		bcf		STATUS,RP1
@@ -902,134 +901,10 @@ EW      BTFSC	EECON1,WR			;MALLA PARA ESPERAR AL FINAL DEL CICLO
 ;------------------------------------------------------------
 ;                  DATOS EN MEMORIA EEPROM
 ;------------------------------------------------------------
-		org  0x2100
-		data   H'17'	;D1
-		data   H'17'	;D2
-		data   H'16'	;D3
-		data   H'01'	;D4
-		data   H'02'	;N1_LOADED
-		data   H'00'	;N1_D1
-		data   H'00'	;N1_D2
-		data   H'00'	;N1_D3
-		data   H'01'	;N1_D4
-		data   H'02'	;N2_LOADED
-		data   H'00'	;N2_D1
-		data   H'00'	;N2_D2
-		data   H'00'	;N2_D3
-		data   H'02'	;N2_D4
-		data   H'02'	;RES_NEG
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
-		data   0xff
+;   org  0x2100
+;   data   H'FF'
+;   data   H'FF'
+;   data   H'FF'
+;   data   H'FF'
 
 		END
